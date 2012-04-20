@@ -1,0 +1,123 @@
+<?php
+
+/**
+ * Author: Peeter Rannou (thedotwriter - http://www.thedotwriter.com)
+ * Copyright 2012
+ */
+ 
+require_once('tagging_ajax_suggest_base.class.inc');
+
+/**
+ * Implementation of hook_menu()
+ *
+ * @version Drupal 6
+ *
+ * @return array
+ */
+function tagging_ajax_suggest_menu() {
+  return tagging_ajax_suggest_base::instance()->hook_menu();
+}
+
+/**
+ * Implementation of hook_field_widget_WIDGET_TYPE_form_alter()
+ *
+ * @version Drupal 6
+ */
+function tagging_ajax_suggest_form_alter(&$form, &$form_state, $form_id) {
+  // Check if we are editting a node and we actually have a tag taxonomy.
+  if ($form['#id'] == 'node-form' && isset($form['taxonomy']['tags'])) {
+    // I didn't quite get the field structure for taxonomy in drupal 6. I don't know if it's the best way to implement the button so let me know!
+    // TODO: Add a button for each tagging field.
+    $form['taxonomy']['suggest_tags_button'] = array(
+      '#type'  => 'button',
+      '#value' => t('Suggest tags'),
+      '#ahah'  => array(
+        'path'    => 'tagging_ajax_suggest/callback',
+        'wrapper' => 'tagging-widget-container',
+      ),
+    );
+  }
+}
+
+/**
+ * Callback function triggered by the "suggest tags" button
+ *
+ * @version Drupal 6
+ */
+function tagging_ajax_suggest_form_callback() {
+  tagging_ajax_suggest_base::instance()->tagging_ajax_suggest_form_callback();
+}
+
+/**
+ * Implementation of hook_field_widget_WIDGET_TYPE_form_alter()
+ *
+ * @version Drupal 7
+ */
+function tagging_ajax_suggest_field_widget_tagging_taxonomy_autocomplete_form_alter(&$element, &$form_state, $context) {
+  tagging_ajax_suggest_base::instance()->hook_field_widget_tagging_taxonomy_autocomplete_form_alter($element, $form_state, $context);
+}
+
+/**
+ * Callback function triggered by the "Suggest tags" button
+ *
+ * @version Drupal 7
+ */
+function tagging_ajax_suggest_callback($form, $form_state) {
+  
+  $storage = variable_get('storage'); 
+  
+  $field = $storage['field_name'];
+  
+  // Not sure if the field would be ever different to LANGUAGE_NONE but in the doubt...
+  $field_lang = $form[$field]['#language'];
+  
+  // Convert the array to an object to match the type of values expected by the _tagging_get_suggestions function
+  $node = (object) $form_state['values'];
+  
+  $machine_name = $storage['machine_name'];
+  
+  // I THINK I need to get back to this, since the concept of vid wasn't clear in my mind at this time... 
+  // Maybe the vid(s) is defined in the same way that d6
+  $vids = db_query('SELECT tv.* FROM {taxonomy_vocabulary} tv WHERE tv.machine_name = :machine_name', array(':machine_name' => $machine_name));
+  $vid = 0;
+  foreach ($vids as $vocab) {
+    $vid = $vocab->vid;
+  }
+  
+  // Update the list of suggested tags
+  $form[$field][$field_lang]['suggestions']['#markup'] = theme('tagging_suggestions_list', array('suggestions' => _tagging_get_suggestions($vid, $node), 'vid' => $vid));
+  
+  // Temporarily store selected tags for "tagging_ajax_suggest_tagging_suggestions_alter" which can't access thoses values.
+  variable_set('selectedTags', $form_state['values'][$field][$field_lang]);
+  
+  // Refresh the state of each tagging field
+  drupal_add_js(drupal_get_path('module', 'tagging_ajax_suggest') . '/js/tagging_ajax_suggest.refresh.d7.js');
+  
+  return $form[$field][$field_lang]['suggestions'];
+}
+
+/**
+ * Implementation of hook_suggest_tagging_suggestions_alter().
+ *
+ * We need to delete suggestions that already have been chosen before rendering.
+ *
+ * @version Drupal 6 & 7
+ *
+ * @param array $suggestions 
+ *   Array containing all suggestions after hooks were invoked
+ */
+function tagging_ajax_suggest_tagging_suggestions_alter(&$suggestions) {
+  // Get the current selected tags
+  $selectedTags = variable_get('selectedTags', array());
+  // Delete the global variable
+  variable_del('selectedTags');
+
+  foreach ($selectedTags as $key => $tag) {
+    $key = array_search($tag['name'], $suggestions);
+    
+    if ($key !== false) {
+      // Delete the tag from suggestions
+      unset($suggestions[$key]);
+    }
+  }
+}

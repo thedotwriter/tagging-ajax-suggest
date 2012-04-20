@@ -1,0 +1,6 @@
+name = Tagging Ajax Suggest
+description = Provides the ability to load tags from the current state of the form without the need to save the node before.
+package = Tagging
+dependencies[] = tagging
+
+core = 7.x
