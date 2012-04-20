@@ -1,1 +1,3 @@
-This project plans to work on the implementation of an ajax refresh feature for the Tagging module currently avalaible on Drupal (http://drupal.org/project/tagging).
+This project implements an ajax refresh feature for the Tagging module currently avalaible on Drupal (http://drupal.org/project/tagging).
+
+The .info file is set to Drupal 7 compatibility but the module works perfectly fine with Drupal 6 too. You'll need to update the "core" value to "6.x" if you plan to use it on a D6 installation.
