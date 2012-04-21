@@ -35,7 +35,7 @@ class tagging_ajax_suggest_d6 extends tagging_ajax_suggest_base
     // TODO: Add support for multiple tagging field on one node. At this point, the module just 
     // pick data from the first one. To change that, it will be needed to know wich "Suggest tag" 
     // button has been clicked.
-    $element = current($form['taxonomy']['tags']);
+    $element = reset($form['taxonomy']['tags']);
 
     // Load suggestions
     $suggestions = _tagging_get_suggestions($element['#vid'], (object) $node);
